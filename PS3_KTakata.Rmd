@@ -8,11 +8,21 @@ output: pdf_document
 ```{r setup, include=FALSE}
 rm(list = ls())
 
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r package, include = FALSE}
+#install.packages("haven")
+#install.packages("ggplot2")
+#install.packages("tidyverse")
+#install.packages("lfe")
+#install.packages("stargazer")
+tinytex::install_tinytex()
 library(tidyverse)
 library(haven)
+library(lfe)
+library(stargazer)
 
-
-knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Introduction
@@ -26,16 +36,15 @@ The data for this problem set is a state-by-year panel. Observations are uniquel
 •	unilateral indicates whether unilateral divorce is legal.
 •	suiciderate_jag is the suicide rate.
 
-
-
 ```{r import data, include = TRUE}
-data_ori <- read_dta("./data/stevenson_wolfers_210.dta")
+#data_ori <- read_dta("./data/stevenson_wolfers_210.dta")
+data_ori <- read_dta("stevenson_wolfers_210.dta")
 ```
 
 ## 12.	We will begin by estimating a simple 2x2 difference-in-differences regression.
 
 a.	The year in which the greatest number of states passed unilateral divorce laws was 1973. Using data on states that passed unilateral divorce laws in 1973 and those that never passed unilateral divorce laws, run a simple 2x2 DD regression to estimate the effect of unilateral divorce laws on ln(suiciderate_jag) for women, clustering standard errors at the state level. Report the estimated effect and the standard error below. 
-
+ 
 Question 12 (a) – Suggested Steps:
 1.	Basic data cleaning. 
   a.	Select only relevant observations. (Which gender? For what variable do we need to remove the NAs?)
@@ -50,17 +59,85 @@ Question 12 (a) – Suggested Steps:
   a.	You can use felm.
   b.	Remember to cluster the st. errors at the state level.
 
-
-```{r a_12, include = FALSE}
+```{r 12a_1, include = TRUE}
+## data clearing
 data <- data_ori %>% 
-        mutate(ln_suicide_rate = log(suiciderate_jag)) %>% 
-        filter(sex == 2)
+        mutate(ln_suicide_rate = log(suiciderate_jag)) %>%   # take a natural log of suicide
+        filter(sex == 2)                                     # filter by women
 
-data_a_12 <- data %>% 
-             mutate(treat = ifelse())
+## create a new data set for regression
+data_12a <- data %>% 
+            mutate(treat = ifelse(divyear == 1973, 1, 0),   # 1 if uni-divorce passed in 1973, otherwise 0
+                   post  = ifelse(year    >  1973, 1, 0),   # 1 if the data is after 1973, otherwise 0
+                   DiD   = treat*post) %>% 
+            filter(divyear == 1973 | divyear > 1996)        # filter states !(uni-divorce passed in 1993 or never by 1996 (the max of the dataset))
+
+## regression
+reg_12a <- felm(ln_suicide_rate ~ treat + post + DiD|0|0|st, data = data_12a)
+summary(reg_12a)
+
+                    
+```
+
+```{r 12a_2, echo=FALSE, results= 'asis'}
+stargazer(reg_12a,
+          title = "changes in Divorce rate by state",
+          type = "latex",
+          notes.align = "l",
+          notes = "\\parbox[t]{10cm}{Treatment variable is 1 if the state introduced the unilateral divorce act in 1973,
+                   and it is 0 if the state had never introduced the act by 1996.
+                   Post variable is 1 if the data was observed after 1973, otherwise, it is 0.
+                   the parenthesis below coefficients are clustered standard error by states.}",
+          notes.append = TRUE)
+
+## how can i remove cites and warnings??
+```
+
+## 13.	Now we will assess whether the parallel trends assumption is reasonable in this setting by estimating an event study, pooling data from all the states
+
+a.	Consider the following event study regression specification: 
+$$ Y_{st} = \sum_{j \ne -1}\beta_j 1*(t- divyear_s = j) + \gamma_s + \delta_t + \epsilon_{st}$$
+
+Interpret the coefficients.
+
+A. After controlling states $(\gamma_s)$ and years $(\delta_t)$, $(t- divyear_s = j)$ shows the year t-j, where j is the year when the unilateral divorce act introduced. Then, $Y_{st}$ shows the level of divorce rate in a state s at time t. Therefore, $\beta_{j} implies the treatment effect for each year before/after the introduction of the act, holding others constant.
 
 
+b. Plot the event study, being sure to include confidence bands as well as point estimates (Hint: Follow Andrew Goodman-Bacon’s mini-guide here).
+
+1.	Create variables for event study.
+  a.	Create a new dataset for the event study
+  b.	The key variable you want to create here is “lag”: a reference “time” variable that tells you for each observation how far the year is from         the time of treatment. For instance, if the reform passed in 1973 in one state, 1972 should have lag=-1, 1974 should have lag =+1, etc. If          another state passed the reform in 1980, observations in that state should have lag =-5 for 1975, lag =3 for 1983, etc.
+  c.	Only consider 6 periods before the treatment, and 12 periods after. (so lag should be between -6 and 12). You can force lag to be -6 for all        the periods before, and 12 for all the periods after.
+  d.	You want to relevel lag so that your reference year is the year before the treatment (careful here: if lag is a factor, that would be the 6th       factor in order!)
+2.	Estimate event study.
+  a.	Use felm, remember to add state and year FE, and cluster st. error at the state level.
+3.	Plot event study – suggestions:
+  a.	Plot the lag variable you created on the x axis.
+  b.	You can use geom_ribbon to plot the confidence intervals (specify ymin, ymax within aes).
+  
+```{r 13b, include=TRUE}
+## create a new dataset
+data_13b <- data %>% 
+            group_by() %>% 
+            mutate(lag = year - divyear) %>%   # lagged years from the introduction.
+            ungroup() %>% 
+            filter(lag   >= -6 & lag <= 12) %>%
+            mutate(lag_f  = factor(lag)) %>% 
+            mutate(lag_f  = fct_relevel(lag_f, "-1")) # relevel factors from -1
+
+## regression
+reg_13b <- felm(ln_suicide_rate ~ lag_f| st + year |0|st, data = data_13b)
+summary(reg_13b)
+
+## plot
+data_13b_plot <- data.frame(x  = c(-6:12),
+                 y  = c(reg_13b$coefficients[1:5], 0, reg_13b$coefficients[6:18]),
+                 up = c(reg_13b$coefficients[1:5], 0, reg_13b$coefficients[6:18]) + 1.96*c(reg_13b$se[1:5], NA, reg_13b$se[6:18]),
+                 lp = c(reg_13b$coefficients[1:5], 0, reg_13b$coefficients[6:18]) - 1.96*c(reg_13b$se[1:5], NA, reg_13b$se[6:18]))
+
+ggplot(data = data_13b_plot, aes(x = x))+
+  geom_line(aes(y= y))
 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
