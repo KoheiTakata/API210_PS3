@@ -1,0 +1,66 @@
+---
+title: "PS3"
+author: "Kohei Takata"
+date: "4/1/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+rm(list = ls())
+
+library(tidyverse)
+library(haven)
+
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+In this section, we will estimate the effect of unilateral divorce laws on female suicide. In the problem set link, we have provided a lightly cleaned version of their main analysis files: stevenson_wolfers_210.dta. Keep this file in a subfolder called data of your problem set Rstudio Project; this will facilitate our submission verification described at the end of this part. The data we are using is available from Justin Wolfers’ website.
+
+Variables
+The data for this problem set is a state-by-year panel. Observations are uniquely identified by state, year, and sex. The data has the following key variables:
+•	st and year are the state and year variables.
+•	sex indicates whether the outcome is observed for males or females. It is coded as 1 for males and 2 for females.
+•	divyear is the year of unilateral divorce reform.
+•	unilateral indicates whether unilateral divorce is legal.
+•	suiciderate_jag is the suicide rate.
+
+
+
+```{r import data, include = TRUE}
+data_ori <- read_dta("./data/stevenson_wolfers_210.dta")
+```
+
+## 12.	We will begin by estimating a simple 2x2 difference-in-differences regression.
+
+a.	The year in which the greatest number of states passed unilateral divorce laws was 1973. Using data on states that passed unilateral divorce laws in 1973 and those that never passed unilateral divorce laws, run a simple 2x2 DD regression to estimate the effect of unilateral divorce laws on ln(suiciderate_jag) for women, clustering standard errors at the state level. Report the estimated effect and the standard error below. 
+
+Question 12 (a) – Suggested Steps:
+1.	Basic data cleaning. 
+  a.	Select only relevant observations. (Which gender? For what variable do we need to remove the NAs?)
+  b.	Remember we’ll be looking at the log of the suicide rates! Create a new variable.
+  c.	You may want to change the class of st and year .
+2.	Create variables specifically for 2x2 DiD
+  a.	Create a new dataset for this regression. You will need to create 3 new variables: “treat”, “post” and “treat*post” (the product of the first two).
+  b.	Treat: it should be 1 for the observations that are treated (year of unilateral divorce reform passed in 1973), and 0 for not treated (never had unilateral divorce reform in our timeline, i.e., reform passed in 2000).
+  c.	Post: year of treatment is 1973, so the post-period should be 1 for the years after 1973.
+  d.	Only keep the treated and control observations, as defined in the question. In other words, we only want to keep observations for which the reform was passed in 1973 and in 2000.
+3.	Run 2x2 DiD
+  a.	You can use felm.
+  b.	Remember to cluster the st. errors at the state level.
+
+
+```{r a_12, include = FALSE}
+data <- data_ori %>% 
+        mutate(ln_suicide_rate = log(suiciderate_jag)) %>% 
+        filter(sex == 2)
+
+data_a_12 <- data %>% 
+             mutate(treat = ifelse())
+
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
