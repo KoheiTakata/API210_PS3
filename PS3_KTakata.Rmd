@@ -104,7 +104,7 @@ In short, the divorce reform reduced the divorce rate in the treated in 1973 by 
 c.	Are the results significant? Can you rule out substantively meaningful effect sizes?
 
 A.
-No, the effect is not statistically significant, as the p-value is larger than 0.05. 
+No, the effect is not statistically significant, as the p-value is larger than 0.05. However, given the relatively large coefficients, the substantively meaningful effect can not be ruled out.
 
 
 ## 13.	Now we will assess whether the parallel trends assumption is reasonable in this setting by estimating an event study, pooling data from all the states
@@ -168,6 +168,7 @@ ggplot(data = data_13b_plot, aes(x = x))+
                    Coutry FE and year FE are included.
                    Shadow shows the 95% confidence interval of clustered SE at the state level." )
 
+ggsave("chart_13b.jpg")
 ```
 
 
@@ -200,9 +201,7 @@ stargazer(reg_12a,
           column.labels = c("2*2 DID", "Two-Way FE"),
           add.lines = c("State/Year FE", "No", "Yes"),
           notes.align = "l",
-          notes = "\\parbox[t]{10cm}{Treatment variable is 1 if the state introduced the unilateral divorce act in 1973,
-                   and it is 0 if the state had never introduced the act by 1996.
-                   Post variable is 1 if the data was observed after 1973, otherwise, it is 0.
+          notes = "\\parbox[t]{10cm}{
                    the parenthesis below coefficients are clustered standard error by states.}",
           type = 'latex')
 
