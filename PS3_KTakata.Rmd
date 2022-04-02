@@ -29,7 +29,7 @@ library(stargazer)
 In this section, we will estimate the effect of unilateral divorce laws on female suicide. In the problem set link, we have provided a lightly cleaned version of their main analysis files: stevenson_wolfers_210.dta. Keep this file in a subfolder called data of your problem set Rstudio Project; this will facilitate our submission verification described at the end of this part. The data we are using is available from Justin Wolfers’ website.
 
 Variables
-The data for this problem set is a state-by-year panel. Observations are uniquely identified by state, year, and sex. The data has the following key variables:
+The data for this problem set is a state-by-year panel. Observations are uniquely identified by state, year, and sex. The data has the following key variables.
 •	st and year are the state and year variables.
 •	sex indicates whether the outcome is observed for males or females. It is coded as 1 for males and 2 for females.
 •	divyear is the year of unilateral divorce reform.
@@ -43,17 +43,14 @@ data_ori <- read_dta("stevenson_wolfers_210.dta")
 ## data clearing
 data <- data_ori %>% 
         mutate(ln_suicide_rate = log(suiciderate_jag)) %>%   # take a natural log of suicide
-        filter(sex == 2) %>%                                 # filter by women
-        mutate(st     = factor(st),
-               year_f = factor(year))
-str(data)
+        filter(sex == 2)
 ```
 
 ## 12.	We will begin by estimating a simple 2x2 difference-in-differences regression.
 
 a.	The year in which the greatest number of states passed unilateral divorce laws was 1973. Using data on states that passed unilateral divorce laws in 1973 and those that never passed unilateral divorce laws, run a simple 2x2 DD regression to estimate the effect of unilateral divorce laws on ln(suiciderate_jag) for women, clustering standard errors at the state level. Report the estimated effect and the standard error below. 
  
-Question 12 (a) – Suggested Steps:
+Question 12 (a) – Suggested Steps.
 1.	Basic data cleaning. 
   a.	Select only relevant observations. (Which gender? For what variable do we need to remove the NAs?)
   b.	Remember we’ll be looking at the log of the suicide rates! Create a new variable.
@@ -68,19 +65,17 @@ Question 12 (a) – Suggested Steps:
   b.	Remember to cluster the st. errors at the state level.
 
 ```{r 12a_1, include = TRUE}
-
 ## create a new data set for regression
 data_12a <- data %>% 
             mutate(treat = ifelse(divyear == 1973, 1, 0),   # 1 if uni-divorce passed in 1973, otherwise 0
-                   post  = ifelse(year    >  1973, 1, 0),   # 1 if the data is after 1973, otherwise 0
+                   post  = ifelse(year    > 1973 , 1, 0),   # 1 if the data is after 1973, otherwise 0
                    DiD   = treat*post) %>% 
             filter(divyear == 1973 | divyear > 1996)        # filter states !(uni-divorce passed in 1993 or never by 1996 (the max of the dataset))
 
 ## regression
-reg_12a <- felm(ln_suicide_rate ~ treat + post + DiD|st|0|st, data = data_12a)
-summary(reg_12a)
-
-                    
+reg_12a <- felm(ln_suicide_rate ~ treat + post + DiD|0|0|st, data = data_12a)
+#summary(reg_12a)
+                  
 ```
 
 ```{r 12a_2, echo=FALSE, results= 'asis'}
@@ -88,15 +83,29 @@ stargazer(reg_12a,
           title = "changes in Divorce rate by state",
           type = "latex",
           notes.align = "l",
-          notes = "\\parbox[t]{10cm}{Treatment variable is 1 
-                   if the state introduced the unilateral divorce act in 1973,
+          notes = "\\parbox[t]{10cm}{Treatment variable is 1 if the state introduced the unilateral divorce act in 1973,
                    and it is 0 if the state had never introduced the act by 1996.
                    Post variable is 1 if the data was observed after 1973, otherwise, it is 0.
-                   the parenthesis below coefficients are clustered standard error by states.}",
-          notes.append = TRUE)
+                   the parenthesis below coefficients are clustered standard error by states.}")
 
 ## how can i remove cites and warnings??
 ```
+
+
+b.	Interpret the point estimate. Explain which treatment/control groups are being compared so that someone without statistical training could understand.
+
+A.
+The coefficient of treat suggests the average difference in the divorce rate between the treated in 1973 and the non-treated until 2000 was 34.4 % point.
+The coefficient of post suggests the average change in the divorce rate from 1964-1973 to 1974-1996 regardless treatment was 1.4 % point of increase, under the parallel trends assumption.
+The coefficient of DiD suggests the average difference in changes in the divorce rate from 1964-1973 to 1974-1996 between the treated in 1973 and the non-treated until 2000 was  -9.3% point of decrease.
+In short, the divorce reform reduced the divorce rate in the treated in 1973 by 9.3% point, on average.
+
+
+c.	Are the results significant? Can you rule out substantively meaningful effect sizes?
+
+A.
+No, the effect is not statistically significant, as the p-value is larger than 0.05. 
+
 
 ## 13.	Now we will assess whether the parallel trends assumption is reasonable in this setting by estimating an event study, pooling data from all the states
 
@@ -105,7 +114,8 @@ $$ Y_{st} = \sum_{j \ne -1}\beta_j 1*(t- divyear_s = j) + \gamma_s + \delta_t + 
 
 Interpret the coefficients.
 
-A. After controlling states $(\gamma_s)$ and years $(\delta_t)$, $(t- divyear_s = j)$ shows the year t-j, where j is the year when the unilateral divorce act introduced. Then, $Y_{st}$ shows the level of divorce rate in a state s at time t. Therefore, $\beta_{j} implies the treatment effect for each year before/after the introduction of the act, holding others constant.
+A. 
+After controlling states $(\gamma_s)$ and years $(\delta_t)$, $(t- divyear_s = j)$ shows the year t-j, where j is the year when the unilateral divorce act introduced. Then, $Y_{st}$ shows the level of divorce rate in a state s at time t. Therefore, $\beta_{j}$ implies the treatment effect for each year before/after the introduction of the act, holding others constant.
 
 
 b. Plot the event study, being sure to include confidence bands as well as point estimates (Hint: Follow Andrew Goodman-Bacon’s mini-guide here).
@@ -121,20 +131,24 @@ b. Plot the event study, being sure to include confidence bands as well as point
   a.	Plot the lag variable you created on the x axis.
   b.	You can use geom_ribbon to plot the confidence intervals (specify ymin, ymax within aes).
   
-```{r 13b, include=TRUE}
+```{r 13b_1, include=TRUE}
 ## create a new dataset
 data_13b <- data %>% 
             group_by() %>% 
             mutate(lag = year - divyear) %>%   # lagged years from the introduction.
             ungroup() %>% 
-            filter(lag   >= -6 & lag <= 12) %>%
-            mutate(lag_f  = factor(lag)) %>% 
-            mutate(lag_f  = fct_relevel(lag_f, "-1")) # relevel factors from -1
+            #filter(lag   >= -6 & lag <= 12) %>%
+            mutate(lag    = ifelse(lag < -6, -6,
+                            ifelse(lag > 12, 12, lag)), # force lag <-6, > 12, as -6, 12,respectively 
+                   lag  = factor(lag)) %>% 
+            mutate(lag  = fct_relevel(lag, "-1")) # relevel factors from -1
 
 ## regression
-reg_13b <- felm(ln_suicide_rate ~ lag_f| st + year_f |0|st, data = data_13b)
-summary(reg_13b)
+reg_13b <- felm(ln_suicide_rate ~ lag| st + year |0|st, data = data_13b)
+#summary(reg_13b)
+```
 
+```{r 13b_2, include=TRUE}
 ## plot
 data_13b_plot <- data.frame(x  = c(-6:12),
                  y  = c(reg_13b$coefficients[1:5], 0, reg_13b$coefficients[6:18]),
@@ -145,8 +159,77 @@ data_13b_plot <- data.frame(x  = c(-6:12),
 ggplot(data = data_13b_plot, aes(x = x))+
   geom_ribbon(aes(ymin = lp, ymax = up), fill = "grey70")+
   geom_line(aes(y = y), color = "red")+
-  geom_line(aes(y = zr))
-
+  geom_line(aes(y = zr))+
+  geom_vline(xintercept = -1) + 
+  labs(title = "Female Suicide Rate since the Divorce Reform",
+       x     = "Years Relative to Divorce Reform",
+       y     = "Change in Log Female Suicide Rate",
+       caption  = "Samples are from all states in 1964-1996.
+                   Coutry FE and year FE are included.
+                   Shadow shows the 95% confidence interval of clustered SE at the state level." )
 
 ```
 
+
+c.	Interpret the figure. Does it support the parallel trends assumption? How do the effects of the reform appear to unfold over time? 
+
+A.    
+If the parallel trends assumption does not hold, the coefficients before the treatment can be significantly different from 0. This is because potentially some other factors may affect the divorce rate before the divorce reform. The chart above shows that coefficients before treatment are not statistically different from 0. Therefore, the parallel trends assumption hypothesis can not be rejected by that.
+
+The effect of divorce reform appear to be tangible as time goes by since the reform. The chart shows the coefficients after t=10 are negatively significant.
+
+## 14.	Now estimate the pooled DD effect using a two-way fixed-effect regression specification. 
+a.	Report the coefficient and standard error clustered at the state level. How does the point estimate compare to the simple 2x2 estimate from question 12? How do the standard errors compare?
+
+Question 14
+1.	Careful here: the treatment here is whether unilateral divorce is legal or not.
+
+
+```{r 14a_1, include=TRUE}
+data_14a <- data %>% 
+            rename("DiD" = unilateral)
+
+reg_14a <- felm(ln_suicide_rate ~ DiD| st + year|0|st, data = data_14a)
+#summary(reg_14a)
+
+```
+
+```{r 14a_2, echo=FALSE, results= 'asis'}
+stargazer(reg_12a,
+          reg_14a,
+          column.labels = c("2*2 DID", "Two-Way FE"),
+          add.lines = c("State/Year FE", "No", "Yes"),
+          notes.align = "l",
+          notes = "\\parbox[t]{10cm}{Treatment variable is 1 if the state introduced the unilateral divorce act in 1973,
+                   and it is 0 if the state had never introduced the act by 1996.
+                   Post variable is 1 if the data was observed after 1973, otherwise, it is 0.
+                   the parenthesis below coefficients are clustered standard error by states.}",
+          type = 'latex')
+
+```
+
+
+Both the point estimate and SE became smaller in model (2) than (1).
+
+b.	How should we think about the two-way fixed-effects estimate? What comparisons are being made? How many are there? Categorize these comparisons into four distinct groups.
+
+A.
+The formula of two-way Fixed Effect model is as follows.
+$$ Y_{st} = \beta*treament_{st} + \gamma_s + \delta_t + \epsilon_{st}$$
+That is $\beta$ the estimate of treatment effect for the entire post-period. Under the parallel trends assumption, the combination of state and year fixed effect can control all the difference in initial level and time trend. Thus, the remained average difference between treated and non-treated should be $\beta$.  
+
+There are only two types in equation: whether treatment variable is 1 or 0.
+In type 1(treatment =1), there are two groups.
+1. state where the act had been introduced since 1964.
+2. state where the act had been introduced during 1964-1996; post-introduction
+
+In type 2(treatment =0), there are two groups.
+3. state where the act had never been introduced until 1996.
+4. state where the act had been introduced during 1964-1996; pre-introduction
+
+
+c.	Given the event study you estimated in question 13, what concerns might you have about some of these comparisons? Do you think the two-way fixed-effects estimate may be biased? If so, in what direction?
+
+A.
+In Question 13, I showed there is a downward time trend in the coefficient of the treatment effect. As time goes since the introduction of the act, the effect becomes negatively more significant. However, as the treatment effect in the two-way fixed effect model captures the average treatment effect for the entire post-period, this cannot capture the dynamics of the coefficient in Q13.
+Therefore, there is a risk of bias in two-way fixed effects. In this case, because there is a downward time trend in the negative value, the beta can be overestimated in the short run, and underestimated in the long run.
