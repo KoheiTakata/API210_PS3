@@ -82,7 +82,7 @@ reg_12a <- felm(ln_suicide_rate ~ treat + post + DiD|0|0|st, data = data_12a)
 
 ```{r 12a_2, echo=FALSE, results= 'asis'}
 stargazer(reg_12a,
-          title = "changes in Divorce rate by state",
+          title = "changes in suicide rate by state",
           type = "latex",
           notes.align = "l",
           notes = "\\parbox[t]{10cm}{Treatment variable is 1 if the state introduced the unilateral divorce act in 1973,
