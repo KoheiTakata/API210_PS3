@@ -3,8 +3,8 @@ title: "PS3"
 author: "Kohei Takata"
 date: "4/1/2022"
 output:
-  word_document: default
   pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
