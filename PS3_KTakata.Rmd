@@ -97,10 +97,10 @@ stargazer(reg_12a,
 b.	Interpret the point estimate. Explain which treatment/control groups are being compared so that someone without statistical training could understand.
 
 A.
-The coefficient of treat suggests the average difference in the divorce rate between the treated in 1973 and the non-treated until 2000 was 34.4 % point.
-The coefficient of post suggests the average change in the divorce rate from 1964-1973 to 1974-1996 regardless treatment was 1.4 % point of increase, under the parallel trends assumption.
-The coefficient of DiD suggests the average difference in changes in the divorce rate from 1964-1973 to 1974-1996 between the treated in 1973 and the non-treated until 2000 was  -9.3% point of decrease.
-In short, the divorce reform reduced the divorce rate in the treated in 1973 by 9.3% point, on average.
+The coefficient of treat suggests the average difference in the suicide rate between the treated in 1973 and the non-treated until 2000 was 34.4 %.
+The coefficient of post suggests the average change in the suicide rate from 1964-1973 to 1974-1996 regardless treatment was 1.4% of increase, under the parallel trends assumption.
+The coefficient of DiD suggests the average difference in changes in the suicide rate from 1964-1973 to 1974-1996 between the treated in 1973 and the non-treated until 2000 was  -9.3% of decrease.
+In short, the divorce reform reduced the divorce rate in the treated in 1973 by 9.3%, on average.
 
 
 c.	Are the results significant? Can you rule out substantively meaningful effect sizes?
